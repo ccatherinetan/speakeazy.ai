@@ -1,0 +1,12 @@
+/* src/About.css */
+.About {
+  padding: 2em;
+  text-align: center;
+  background-color: #f4f4f4;
+}
+.About h1 {
+  color: #333;
+}
+.About p {
+  color: #555;
+}
