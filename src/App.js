@@ -3,6 +3,7 @@ import React from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import "./App.css";
 import About from "./About";
+import CameraScreenRecorder from "./components/CameraScreenRecorder";
 
 function App() {
   return (
@@ -30,6 +31,8 @@ function App() {
                     <li>Personalized feedback</li>
                     <li>Interactive training modules</li>
                   </ul>
+                  {/* Add the CameraScreenRecorder component here */}
+                  <CameraScreenRecorder />
                 </section>
               }
             />
