@@ -5,6 +5,8 @@ const CameraScreenRecorder = () => {
   const [cameraStream, setCameraStream] = useState(null);
   const [screenStream, setScreenStream] = useState(null);
   const [recorder, setRecorder] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isCameraOn, setIsCameraOn] = useState(false);
   const chunks = useRef([]);
   const videoRef = useRef(null);
   const screenVideoRef = useRef(null);
@@ -25,6 +27,7 @@ const CameraScreenRecorder = () => {
         audio: true,
       });
       setCameraStream(stream);
+      setIsCameraOn(true);
     } catch (error) {
       console.error("Error accessing camera:", error);
     }
@@ -42,6 +45,7 @@ const CameraScreenRecorder = () => {
       };
       mediaRecorder.start();
       setRecorder(mediaRecorder);
+      setIsRecording(true);
     } catch (error) {
       console.error("Error accessing screen:", error);
     }
@@ -64,12 +68,14 @@ const CameraScreenRecorder = () => {
         // Clear chunks
         chunks.current = [];
       };
+      setIsRecording(false);
     }
 
     // Stop the camera stream
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
+      setIsCameraOn(false);
     }
 
     // Stop the screen stream
@@ -101,7 +107,9 @@ const CameraScreenRecorder = () => {
             zIndex: 1,
           }}
         />
-        <button onClick={startCamera}>Start Camera</button>
+        <button onClick={isCameraOn ? stopRecording : startCamera}>
+          {isCameraOn ? "Stop Camera" : "Start Camera"}
+        </button>
       </div>
       <div>
         <video
@@ -109,8 +117,9 @@ const CameraScreenRecorder = () => {
           autoPlay
           style={{ width: "100%", height: "auto" }}
         />
-        <button onClick={startScreenRecording}>Start Screen Recording</button>
-        <button onClick={stopRecording}>Stop Recording</button>
+        <button onClick={isRecording ? stopRecording : startScreenRecording}>
+          {isRecording ? "Stop Recording" : "Start Screen Recording"}
+        </button>
       </div>
     </div>
   );
