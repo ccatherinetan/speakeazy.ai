@@ -1,9 +1,10 @@
-// src/App.js
 import React from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import "./App.css";
 import About from "./About";
 import CameraScreenRecorder from "./components/CameraScreenRecorder";
+import ChatBox from "./ChatBox";
+import "./ChatBox.css";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <nav>
           <Link to="/">Home</Link>
           <Link to="/about">About</Link>
+          <Link to="/chat">Chat</Link> {/* Add a link to the Chat route */}
         </nav>
         <main>
           <Routes>
@@ -37,6 +39,8 @@ function App() {
               }
             />
             <Route path="/about" element={<About />} />
+            <Route path="/chat" element={<ChatBox />} />{" "}
+            {/* Add the ChatBox component route */}
           </Routes>
         </main>
         <footer>&copy; 2024 SpeakEazy. All rights reserved.</footer>
