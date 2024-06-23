@@ -1,32 +1,48 @@
-// src/WebSocketContext.js
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 const WebSocketContext = createContext(null);
 
-export function WebSocketProvider({ children }) {
-  const [socket, setSocket] = useState(null);
+export const WebSocketProvider = ({ children }) => {
+  const [ws, setWs] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Connect to your backend WebSocket server
-    const ws = new WebSocket("ws://localhost:3001/proxy");
-    ws.onopen = () => console.log("Connected to backend WebSocket");
-    ws.onclose = () => console.log("Disconnected from backend WebSocket");
+    const socket = new WebSocket("ws://localhost:3001/video");
 
-    setSocket(ws);
+    socket.onopen = () => {
+      console.log("WebSocket Connected");
+      setIsConnected(true);
+      setWs(socket);
+    };
+
+    socket.onclose = () => {
+      console.log("WebSocket Disconnected");
+      setIsConnected(false);
+      setWs(null);
+    };
 
     return () => {
-      ws.close();
+      socket.close();
     };
   }, []);
 
   return (
-    <WebSocketContext.Provider value={socket}>
+    <WebSocketContext.Provider value={{ ws, isConnected }}>
       {children}
     </WebSocketContext.Provider>
   );
-}
+};
 
-// Custom hook to use WebSocket
-export function useWebSocket() {
-  return useContext(WebSocketContext);
-}
+export const useWebSocket = () => {
+  const context = useContext(WebSocketContext);
+  if (context === null) {
+    throw new Error("useWebSocket must be used within a WebSocketProvider");
+  }
+  return context;
+};
