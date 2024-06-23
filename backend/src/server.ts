@@ -15,16 +15,13 @@ const hume = new HumeClient({
   secretKey: process.env.HUME_SECRET_KEY,
 });
 
-// Function to safely stringify objects with circular references
 function safeStringify(obj: any) {
   const cache = new Set();
   return JSON.stringify(obj, (key, value) => {
     if (typeof value === "object" && value !== null) {
       if (cache.has(value)) {
-        // Circular reference found, discard key
-        return;
+        return; // Discard key if circular reference found
       }
-      // Store value in our set
       cache.add(value);
     }
     return value;
@@ -35,18 +32,41 @@ wsServer.on("connection", (ws: WebSocket) => {
   console.log("Client connected to /video WebSocket endpoint");
 
   ws.on("message", async (message: Buffer) => {
+    console.log("Received frame from client");
+
     try {
-      console.log("Received frame from client");
+      // Convert buffer to base64 string; necessary if the model expects image data in this format
+      const base64data = message.toString("base64");
+      console.log(message);
+      // Process the data for emotion prediction
+      const stream = await hume.start({
+        models: {
+          face: {},
+        },
+        rawInput: true,
+        streamWindowMs: 1000, // Adjust as needed
+      });
 
-      // Assuming this method initializes the connection and processes the data
-      const result = await hume.expressionMeasurement.stream.connect(
-        data: message.toString("base64"),
-      );
+      stream.on("message", (message) => {
+        console.log(
+          "Prediction result from Hume:",
+          JSON.stringify(message, null, 2)
+        );
+        ws.send(JSON.stringify(message));
+      });
 
-      console.log("Prediction result from Hume:", safeStringify(result));
-      ws.send(safeStringify(result));
+      stream.on("error", (error) => {
+        console.error("Stream error:", error);
+        ws.send(JSON.stringify({ error: "Stream error" }));
+      });
+
+      stream.write(base64data);
     } catch (error) {
       console.error("Error processing frame:", error);
+      if (error instanceof Error) {
+        console.error(error.message);
+        console.error(error.stack);
+      }
       ws.send(JSON.stringify({ error: "Error processing frame" }));
     }
   });

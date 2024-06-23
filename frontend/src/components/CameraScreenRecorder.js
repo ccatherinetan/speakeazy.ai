@@ -37,14 +37,15 @@ const CameraScreenRecorder = () => {
         if (canvas && video) {
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
-          canvas.getContext("2d").drawImage(video, 0, 0);
+          const context = canvas.getContext("2d");
+          context.drawImage(video, 0, 0);
           canvas.toBlob((blob) => {
             if (ws.readyState === WebSocket.OPEN) {
-              ws.send(blob);
+              ws.send(blob); // Ensure this blob is correctly handled on the server
             }
           }, "image/png");
         }
-      }, 1000); // Send a frame every second
+      }, 1000); // Adjust this interval as needed for your application
     }
     return () => clearInterval(intervalId);
   }, [isCameraOn, isConnected, ws]);
@@ -52,8 +53,30 @@ const CameraScreenRecorder = () => {
   useEffect(() => {
     if (isConnected && ws) {
       ws.onmessage = (event) => {
-        const result = JSON.parse(event.data);
-        setPrediction(result);
+        if (typeof event.data === "string") {
+          // Handle JSON data
+          try {
+            const result = JSON.parse(event.data);
+            setPrediction(result);
+          } catch (error) {
+            console.error("Error parsing JSON:", error);
+          }
+        } else if (event.data instanceof Blob) {
+          // Handle Blob data
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const result = JSON.parse(reader.result);
+              setPrediction(result);
+            } catch (error) {
+              console.error("Error parsing Blob to JSON:", error);
+            }
+          };
+          reader.onerror = (error) => {
+            console.error("Error reading Blob:", error);
+          };
+          reader.readAsText(event.data);
+        }
       };
     }
   }, [isConnected, ws]);
