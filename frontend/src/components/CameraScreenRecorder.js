@@ -1,11 +1,10 @@
-// src/components/CameraScreenRecorder.js
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useContext } from "react";
+import { useWebSocket } from "./WebSocketContext"; // Import the WebSocket custom hook
 
 const CameraScreenRecorder = () => {
-  const [isRecording, setIsRecording] = useState(false);
+  const ws = useWebSocket(); // Get WebSocket connection from context
   const [isCameraOn, setIsCameraOn] = useState(false);
   const videoRef = useRef(null);
-  const screenVideoRef = useRef(null);
 
   const startCamera = async () => {
     try {
@@ -15,6 +14,11 @@ const CameraScreenRecorder = () => {
       });
       videoRef.current.srcObject = stream;
       setIsCameraOn(true);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(
+          JSON.stringify({ action: "startCamera", status: "Camera started" })
+        );
+      }
     } catch (error) {
       console.error("Error accessing camera:", error);
     }
@@ -27,16 +31,19 @@ const CameraScreenRecorder = () => {
       videoRef.current.srcObject = null;
     }
     setIsCameraOn(false);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(
+        JSON.stringify({ action: "stopCamera", status: "Camera stopped" })
+      );
+    }
   };
 
   return (
     <div>
-      <div>
-        <video ref={videoRef} autoPlay style={{ width: 300, height: 300 }} />
-        <button onClick={isCameraOn ? stopCamera : startCamera}>
-          {isCameraOn ? "Stop Camera" : "Start Camera"}
-        </button>
-      </div>
+      <video ref={videoRef} autoPlay style={{ width: 300, height: 300 }} />
+      <button onClick={isCameraOn ? stopCamera : startCamera}>
+        {isCameraOn ? "Stop Camera" : "Start Camera"}
+      </button>
     </div>
   );
 };

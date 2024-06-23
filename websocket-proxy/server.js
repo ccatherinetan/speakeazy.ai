@@ -6,14 +6,12 @@ require("dotenv").config();
 const app = express();
 const server = http.createServer(app);
 
-// Retrieve API Key from environment variables
-const HUME_API_KEY = process.env.HUME_API_KEY;
+const HUME_API_KEY = process.env.HUME_API_KEY; // Retrieve API Key from environment variables
 const HUME_SOCKET_ENDPOINT = "wss://api.hume.ai/v0/stream/models";
 
-// Create a WebSocket Server on top of the HTTP server
-const proxyWs = new WebSocket.Server({ server, path: "/proxy" });
-
 console.log("Using HUME API KEY:", HUME_API_KEY); // Debugging: log the API key to verify it's loaded correctly
+
+const proxyWs = new WebSocket.Server({ server, path: "/proxy" });
 
 proxyWs.on("connection", function connection(ws) {
   let humeWs;
@@ -43,16 +41,11 @@ proxyWs.on("connection", function connection(ws) {
     });
 
     humeWs.on("message", (data) => {
-      console.log("Raw data received from Hume AI:", data);
+      console.log("Raw data received from Hume AI:", data.toString());
       try {
         const jsonData = JSON.parse(data);
         console.log("Parsed predictions:", jsonData);
-        ws.send(
-          JSON.stringify({
-            type: "predictions",
-            data: jsonData,
-          })
-        ); // Forward processed data to the client
+        ws.send(JSON.stringify({ type: "predictions", data: jsonData }));
       } catch (error) {
         console.error("Error parsing JSON from Hume AI:", error);
       }
@@ -78,7 +71,7 @@ proxyWs.on("connection", function connection(ws) {
   }
 
   ws.on("message", (message) => {
-    console.log("Received message from client:", message);
+    console.log("Received message from client:", message.toString());
     if (humeWs && humeWs.readyState === WebSocket.OPEN) {
       humeWs.send(message);
     } else {
