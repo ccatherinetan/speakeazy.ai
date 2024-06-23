@@ -1,102 +1,49 @@
 const express = require("express");
-const WebSocket = require("ws");
 const http = require("http");
 require("dotenv").config();
+const { HumeClient } = require("hume"); // Ensure the HumeClient supports binary data over WebSockets
 
 const app = express();
 const server = http.createServer(app);
+const WebSocket = require("ws"); // For handling WebSocket without HumeClient, if needed
 
-const HUME_API_KEY = process.env.HUME_API_KEY; // Retrieve API Key from environment variables
-const HUME_SOCKET_ENDPOINT = "wss://api.hume.ai/v0/stream/models";
-
-console.log("Using HUME API KEY:", HUME_API_KEY); // Debugging: log the API key to verify it's loaded correctly
-
-const proxyWs = new WebSocket.Server({ server, path: "/proxy" });
-
-proxyWs.on("connection", function connection(ws) {
-  let humeWs;
-  let connectionAttempts = 0;
-
-  function connectToHume() {
-    if (connectionAttempts > 3) {
-      console.log("Maximum connection attempts reached.");
-      ws.send(
-        JSON.stringify({
-          error: "Failed to connect to Hume AI after several attempts.",
-        })
-      );
-      ws.close(1011, "Unable to connect to Hume AI after several attempts.");
-      return;
-    }
-
-    humeWs = new WebSocket(HUME_SOCKET_ENDPOINT, {
-      headers: {
-        "X-Hume-Api-Key": HUME_API_KEY,
-      },
-    });
-
-    humeWs.on("open", () => {
-      console.log("Connected to Hume AI");
-      connectionAttempts = 0; // Reset attempts on successful connection
-    });
-
-    humeWs.on("message", (data) => {
-      console.log("Raw data received from Hume AI:", data.toString());
-      try {
-        const jsonData = JSON.parse(data);
-        console.log("Parsed predictions:", jsonData);
-        ws.send(JSON.stringify({ type: "predictions", data: jsonData }));
-      } catch (error) {
-        console.error("Error parsing JSON from Hume AI:", error);
-      }
-    });
-
-    humeWs.on("close", (code, reason) => {
-      console.log(
-        `Hume WebSocket closed with code: ${code}, reason: ${reason}`
-      );
-      ws.close(); // Close client WebSocket if Hume WebSocket closes
-      connectionAttempts++;
-      setTimeout(connectToHume, 1000 * connectionAttempts); // Exponential back-off
-    });
-
-    humeWs.on("error", (error) => {
-      console.error("WebSocket error from Hume:", error);
-    });
-
-    humeWs.on("unexpected-response", (request, response) => {
-      console.error(`Unexpected response from Hume: ${response.statusCode}`);
-      ws.close(); // Close client WebSocket on unexpected response
-    });
-  }
-
-  ws.on("message", (message) => {
-    console.log("Received message from client:", message.toString());
-    if (humeWs && humeWs.readyState === WebSocket.OPEN) {
-      humeWs.send(message);
-    } else {
-      console.log("Hume WebSocket is not open. Attempting to connect...");
-      connectToHume();
-    }
-  });
-
-  ws.on("close", () => {
-    console.log("Client WebSocket closed");
-    if (humeWs) {
-      humeWs.close(); // Ensure to close the Hume WebSocket when client disconnects
-    }
-  });
-
-  ws.on("error", (error) => {
-    console.error("WebSocket error from client:", error);
-    if (humeWs) {
-      humeWs.close(); // Ensure to close the Hume WebSocket on client error
-    }
-  });
-
-  connectToHume();
+const hume = new HumeClient({
+  apiKey: process.env.HUME_API_KEY,
 });
 
 server.listen(3001, () => {
-  console.log("WebSocket proxy server running on http://localhost:3001");
+  console.log("Server running on http://localhost:3001");
+
+  const socket = hume.expressionMeasurement.stream.connect({
+    onOpen: () => console.log("WebSocket connection to Hume AI opened"),
+    onMessage: handleMessage,
+    onError: (error) => console.error("WebSocket error:", error),
+    onClose: () => console.log("WebSocket connection closed"),
+  });
+
+  function handleMessage(message) {
+    console.log("Message from Hume AI:", message);
+    // Handle messages here
+  }
+
+  // Setup a WebSocket server to receive video from the client
+  const wsServer = new WebSocket.Server({ server });
+  wsServer.on("connection", function connection(ws) {
+    ws.on("message", function incoming(message) {
+      if (typeof message === "string") {
+        console.log("Received text:", message);
+      } else {
+        // Assuming binary data is video
+        console.log("Received video data.");
+        console.log(message);
+        // Send this data to Hume's WebSocket
+        socket.sendVideo(message); // This method must exist or be implemented in HumeClient
+      }
+    });
+  });
+
+  // Inform clients the server is ready
+  app.get("/", (req, res) => {
+    res.send("Server is ready to receive video!");
+  });
 });
